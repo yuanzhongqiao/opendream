@@ -1,86 +1,88 @@
-# Opendream: A Web UI For the Rest of Us 💭 🎨
-
-Opendream brings much needed and familiar features, such as layering, non-destructive editing, portability, and easy-to-write extensions, to your Stable Diffusion workflows. Check out our [demo video](https://twitter.com/varunshenoy_/status/1691506322360201216?s=20).
-
-![hero](images/hero.png)
-
-## Getting started
-
-0. *Prerequisites*: Make sure you have Node installed. You can download it [here](https://nodejs.org/en/download).
-1. Clone this repository.
-2. Navigate to this project within your terminal and run `sh ./run_opendream.sh`. After ~30 seconds, both the frontend and backend of the Opendream system should be up and running.
-
-## Features
-
-Diffusion models have emerged as powerful tools in the world of image generation and manipulation. While they offer significant benefits, these models are often considered black boxes due to their inherent complexity. The current diffusion image generation ecosystem is defined by tools that allow one-off image manipulation tasks to control these models - text2img, in-painting, pix2pix, among others.
-
-For example, popular interfaces like [Automatic1111](https://github.com/AUTOMATIC1111/stable-diffusion-webui), [Midjourney](https://midjourney.com/), and [Stability.AI's DreamStudio](https://beta.dreamstudio.ai/generate) only support destructive editing: each edit "consumes" the previous image. This means users cannot easily build off of previous images or run multiple experiments on the same image, limiting their options for creative exploration.
-
-### Layering and Non-destructive Editing
-
-Non-destructive editing is a method of image manipulation that preserves the original image data while allowing users to make adjustments and modifications without overwriting previous work. This approach facilitates experimentation and provides more control over the editing process by using layers and masks. When you delete a layer, all layers after it also get deleted. This guarantees that all layers currently on the canvas are a product of other existing layers. This also allows one to deterministically "replay" a workflow.
-
-Like Photoshop, Opendream supports non-destructive editing out of the box. Learn more about the principles of non-destructive editing in Photoshop [here](https://helpx.adobe.com/photoshop/using/nondestructive-editing.html).
-
-![layers](images/editing.png)
-
-### Save and Share Workflows
-
-Users can also save their current workflows into a portable file format that can be opened up at a later time or shared with collaborators. In this context, a "state" is just a JSON file describing all of the current layers and how they were created.
-
-![workflow](images/workflow.png)
-
-### Support Simple to Write, Easy to Install Extensions
-
-As the open-source ecosystem flourishes around these models and tools, extensibility has also become a major concern. While Automatic1111 does offer extensions, they are often difficult to program, use, and install. It is far from being as full-featured as an application like Adobe Photoshop.
-
-As new features for Stable Diffusion, like ControlNet, are released, users should be able to seamlessly integrate them into their artistic workflows with minimal overload and time.
-
-Opendream makes writing and using new diffusion features as simple as writing a Python function. Keep reading to learn how.
-
-## Extensions
-
-From the get-go, Opendream supports two key primitive operations baked into the core system: `dream` and `mask_and_inpaint`. In this repository, extensions for `instruct_pix2pix`, `controlnet_canny`, `controlnet_openpose`, and `sam` (Segment Anything) are provided.
-
-Any image manipulation logic can be easily written as an extension. With extensions, you can also decide how certain operations work. For example, you can override the `dream` operation to use OpenAI's DALL-E instead or call a serverless endpoint on a service like AWS or Replicate. [Here's an example using Baseten](https://gist.githubusercontent.com/varunshenoy/f029c55536bb7e4fac61a595e836d930/raw/f7e693c8aa42a814d05198c28a843a97c8f6a4c6/baseten_stable_diffusion.py).
-
-### Loading an Existing Extension
-
-There are two ways to load extensions.
-
-1. Install a pre-written one through the Web UI.
-2. _(Manual)_ Download a valid extension file (or write one yourself!) and add it to the `opendream/extensions` folder. Instructions for writing your own extension are below.
-
-Here is a sampling of currently supported extensions. You can use the links to install any given extension through the Web UI.
-
-| **Extension**               | **Link**                                                                                                                                                         |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OpenAI's DALL-E             | [File](https://gist.githubusercontent.com/varunshenoy/4a9a6bbfedfa7def28178a8f0563320a/raw/d2d10faa0fad8c2d251e599d962b0c7f62c06db0/dalle.py)                    |
-| Serverless Stable Diffusion | [File](https://gist.githubusercontent.com/varunshenoy/f029c55536bb7e4fac61a595e836d930/raw/f7e693c8aa42a814d05198c28a843a97c8f6a4c6/baseten_stable_diffusion.py) |
-| Instruct Pix2Pix            | [File](https://gist.githubusercontent.com/varunshenoy/894c7a723de6b4651380dd7fa2a81724/raw/fa678d8d6c430421fb481f7023ad76898dd27ad6/instruct_pix2pix.py)         |
-| ControlNet Canny            | [File](https://gist.githubusercontent.com/varunshenoy/0b0455449454e5856021fe2971b78352/raw/1c08b376b499c25c84976eade71db9aa355dba47/controlnet_canny.py)         |
-| ControlNet Openpose         | [File](https://gist.githubusercontent.com/varunshenoy/380722906b8ff184569af57e06fd37b7/raw/728832370db0448bc2807ffc9e267635749e6a9f/controlnet_openpose.py)      |
-| Segment Anything            | [File](https://gist.githubusercontent.com/varunshenoy/5fbc883360e5ab2a3c023ce1e286ddd5/raw/efbc92d27ae2209b15948fb52f657e88c185b349/sam.py)                      |
-| PhotoshopGPT                | [Gist](https://gist.github.com/varunshenoy/63054e7a479f256974416ef45a51e6a0)                                                                                     |
-
-Note that extensions may have their own requirements you would need to include in the `requirements.txt` file. For example, you would need to add `openai` if you want to use the DALL-E extension.
-
-Feel free to make a PR if you create a useful extension!
-
-### Writing Your Own Extension
-
-Users can write their own extensions as follows:
-
-1. Create a new Python file in the `opendream/extensions` folder.
-2. Write a method with type hints and a `@opendream.define_op` decorator. This decorator registers this method with the Opendream backend.
-
-The method has a few requirements:
-
-- Parameters must have type hints. These enable the backend to generate a schema for the input which is parsed into form components on the frontend. Valid types include: `str`, `int`, `float`, `Layer`, `MaskLayer`, or `ImageLayer`.
-- The only valid return types are a `Layer` or a list of `Layer` objects.
-
-## Contributions and Licensing
-
-_Opendream was built by Varun Shenoy, Eric Lou, Shashank Rammoorthy, and Rahul Shiv as a part of Stanford's [CS 348K](https://cs348k.stanford.edu/)._
-
-Feel free to provide any contributions you deem necessary or useful. This project is licensed under the MIT License.
+<div class="Box-sc-g0xbh4-0 bJMeLZ js-snippet-clipboard-copy-unpositioned" data-hpc="true"><article class="markdown-body entry-content container-lg" itemprop="text"><div class="markdown-heading" dir="auto"><h1 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Opendream：适合我们其他人的 Web UI 💭 🎨</font></font></h1><a id="user-content-opendream-a-web-ui-for-the-rest-of-us--" class="anchor" aria-label="永久链接：Opendream：适合我们其他人的 Web UI 💭 🎨" href="#opendream-a-web-ui-for-the-rest-of-us--"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Opendream 为您的 Stable Diffusion 工作流程带来了急需且熟悉的功能，例如分层、非破坏性编辑、可移植性和易于编写的扩展。观看我们的</font></font><a href="https://twitter.com/varunshenoy_/status/1691506322360201216?s=20" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">演示视频</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font></font></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="/varunshenoy/opendream/blob/main/images/hero.png"><img src="/varunshenoy/opendream/raw/main/images/hero.png" alt="英雄" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h2 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">入门</font></font></h2><a id="user-content-getting-started" class="anchor" aria-label="永久链接：开始使用" href="#getting-started"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<ol start="0" dir="auto">
+<li><em><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">先决条件</font></font></em><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">：确保已安装 Node。你可以</font></font><a href="https://nodejs.org/en/download" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">在这里</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">下载</font><font style="vertical-align: inherit;">。</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">克隆这个存储库。</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">在终端中导航到该项目并运行</font></font><code>sh ./run_opendream.sh</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">.大约 30 秒后，Opendream 系统的前端和后端都应该启动并运行。</font></font></li>
+</ol>
+<div class="markdown-heading" dir="auto"><h2 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">特征</font></font></h2><a id="user-content-features" class="anchor" aria-label="永久链接：特点" href="#features"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">扩散模型已成为图像生成和操作领域的强大工具。虽然它们提供了显着的好处，但由于其固有的复杂性，这些模型通常被视为黑匣子。当前的扩散图像生成生态系统是由允许一次性图像处理任务来控制这些模型的工具定义的 - text2img、in-painting、pix2pix 等。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">例如，</font></font><a href="https://github.com/AUTOMATIC1111/stable-diffusion-webui"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Automatic1111</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">、</font></font><a href="https://midjourney.com/" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Midjourney</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">和</font></font><a href="https://beta.dreamstudio.ai/generate" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Stability.AI 的 DreamStudio</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">等流行界面仅支持破坏性编辑：每次编辑都会“消耗”前一个图像。这意味着用户无法轻松地利用以前的图像或在同一张图像上运行多个实验，从而限制了他们的创造性探索的选择。</font></font></p>
+<div class="markdown-heading" dir="auto"><h3 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">分层和无损编辑</font></font></h3><a id="user-content-layering-and-non-destructive-editing" class="anchor" aria-label="永久链接：分层和无损编辑" href="#layering-and-non-destructive-editing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">非破坏性编辑是一种图像处理方法，它保留原始图像数据，同时允许用户进行调整和修改，而不会覆盖以前的工作。这种方法有助于实验，并通过使用图层和蒙版提供对编辑过程的更多控制。删除图层时，该图层之后的所有图层也会被删除。这保证了画布上当前的所有图层都是其他现有图层的产物。这还允许人们确定性地“重放”工作流程。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">与 Photoshop 一样，Opendream 支持开箱即用的非破坏性编辑。</font></font><a href="https://helpx.adobe.com/photoshop/using/nondestructive-editing.html" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">在此处</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">了解有关 Photoshop 中无损编辑原理的更多信息</font><font style="vertical-align: inherit;">。</font></font></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="/varunshenoy/opendream/blob/main/images/editing.png"><img src="/varunshenoy/opendream/raw/main/images/editing.png" alt="层数" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h3 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">保存和共享工作流程</font></font></h3><a id="user-content-save-and-share-workflows" class="anchor" aria-label="永久链接：保存和共享工作流程" href="#save-and-share-workflows"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">用户还可以将当前的工作流程保存为便携式文件格式，以便稍后打开或与协作者共享。在这种情况下，“状态”只是一个描述所有当前层及其创建方式的 JSON 文件。</font></font></p>
+<p dir="auto"><a target="_blank" rel="noopener noreferrer" href="/varunshenoy/opendream/blob/main/images/workflow.png"><img src="/varunshenoy/opendream/raw/main/images/workflow.png" alt="工作流程" style="max-width: 100%;"></a></p>
+<div class="markdown-heading" dir="auto"><h3 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">支持简单编写、易于安装的扩展</font></font></h3><a id="user-content-support-simple-to-write-easy-to-install-extensions" class="anchor" aria-label="永久链接：支持简单编写、易于安装的扩展" href="#support-simple-to-write-easy-to-install-extensions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">随着开源生态系统围绕这些模型和工具蓬勃发展，可扩展性也成为一个主要问题。虽然Automatic1111确实提供了扩展，但它们通常难以编程、使用和安装。它远没有像 Adob&ZeroWidthSpace;&ZeroWidthSpace;e Photoshop 这样的应用程序功能齐全。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">随着 ControlNet 等稳定扩散的新功能的发布，用户应该能够以最少的过载和时间将它们无缝集成到他们的艺术工作流程中。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Opendream 使编写和使用新的扩散功能就像编写 Python 函数一样简单。继续阅读以了解如何操作。</font></font></p>
+<div class="markdown-heading" dir="auto"><h2 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">扩展</font></font></h2><a id="user-content-extensions" class="anchor" aria-label="永久链接：扩展" href="#extensions"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">从一开始，Opendream 支持核心系统中的两个关键原始操作：</font></font><code>dream</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">和</font></font><code>mask_and_inpaint</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。在此存储库中，提供了</font></font><code>instruct_pix2pix</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">、</font></font><code>controlnet_canny</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">、</font></font><code>controlnet_openpose</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">和</font></font><code>sam</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">（Segment Anything）的扩展。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">任何图像处理逻辑都可以轻松地编写为扩展。通过扩展，您还可以决定某些操作的工作方式。例如，您可以覆盖该</font></font><code>dream</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">操作以改用 OpenAI 的 DALL-E，或者调用 AWS 或 Replicate 等服务上的无服务器端点。</font></font><a href="https://gist.githubusercontent.com/varunshenoy/f029c55536bb7e4fac61a595e836d930/raw/f7e693c8aa42a814d05198c28a843a97c8f6a4c6/baseten_stable_diffusion.py" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">这是使用 Baseten 的示例</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font></font></p>
+<div class="markdown-heading" dir="auto"><h3 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">加载现有扩展</font></font></h3><a id="user-content-loading-an-existing-extension" class="anchor" aria-label="永久链接：加载现有扩展" href="#loading-an-existing-extension"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">有两种加载扩展的方法。</font></font></p>
+<ol dir="auto">
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">通过 Web UI 安装预先编写的版本。</font></font></li>
+<li><em><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">（手动）</font></font></em><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">下载有效的扩展文件（或自己编写一个！）并将其添加到</font></font><code>opendream/extensions</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文件夹中。下面是编写您自己的扩展的说明。</font></font></li>
+</ol>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">以下是当前支持的扩展的示例。您可以使用这些链接通过 Web UI 安装任何给定的扩展。</font></font></p>
+<table>
+<thead>
+<tr>
+<th><strong><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">扩大</font></font></strong></th>
+<th><strong><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">关联</font></font></strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">OpenAI 的 DALL-E</font></font></td>
+<td><a href="https://gist.githubusercontent.com/varunshenoy/4a9a6bbfedfa7def28178a8f0563320a/raw/d2d10faa0fad8c2d251e599d962b0c7f62c06db0/dalle.py" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文件</font></font></a></td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">无服务器稳定扩散</font></font></td>
+<td><a href="https://gist.githubusercontent.com/varunshenoy/f029c55536bb7e4fac61a595e836d930/raw/f7e693c8aa42a814d05198c28a843a97c8f6a4c6/baseten_stable_diffusion.py" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文件</font></font></a></td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">指导 Pix2Pix</font></font></td>
+<td><a href="https://gist.githubusercontent.com/varunshenoy/894c7a723de6b4651380dd7fa2a81724/raw/fa678d8d6c430421fb481f7023ad76898dd27ad6/instruct_pix2pix.py" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文件</font></font></a></td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">控制网 Canny</font></font></td>
+<td><a href="https://gist.githubusercontent.com/varunshenoy/0b0455449454e5856021fe2971b78352/raw/1c08b376b499c25c84976eade71db9aa355dba47/controlnet_canny.py" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文件</font></font></a></td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">ControlNet Openpose</font></font></td>
+<td><a href="https://gist.githubusercontent.com/varunshenoy/380722906b8ff184569af57e06fd37b7/raw/728832370db0448bc2807ffc9e267635749e6a9f/controlnet_openpose.py" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文件</font></font></a></td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">分割任何东西</font></font></td>
+<td><a href="https://gist.githubusercontent.com/varunshenoy/5fbc883360e5ab2a3c023ce1e286ddd5/raw/efbc92d27ae2209b15948fb52f657e88c185b349/sam.py" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文件</font></font></a></td>
+</tr>
+<tr>
+<td><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">PhotoshopGPT</font></font></td>
+<td><a href="https://gist.github.com/varunshenoy/63054e7a479f256974416ef45a51e6a0"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">要旨</font></font></a></td>
+</tr>
+</tbody>
+</table>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">请注意，扩展可能有自己的要求，您需要将其包含在</font></font><code>requirements.txt</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">文件中。例如，</font></font><code>openai</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">如果您想使用 DALL-E 扩展，则</font><font style="vertical-align: inherit;">需要添加。</font></font></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">如果您创建了一个有用的扩展，请随意制作 PR！</font></font></p>
+<div class="markdown-heading" dir="auto"><h3 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">编写您自己的扩展</font></font></h3><a id="user-content-writing-your-own-extension" class="anchor" aria-label="永久链接：编写您自己的扩展" href="#writing-your-own-extension"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">用户可以编写自己的扩展，如下所示：</font></font></p>
+<ol dir="auto">
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">在文件夹中创建一个新的 Python 文件</font></font><code>opendream/extensions</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">编写一个带有类型提示和装饰器的方法</font></font><code>@opendream.define_op</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。该装饰器向 Opendream 后端注册该方法。</font></font></li>
+</ol>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">该方法有几个要求：</font></font></p>
+<ul dir="auto">
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">参数必须有类型提示。这些使后端能够为输入生成模式，该模式被解析为前端的表单组件。有效类型包括：</font></font><code>str</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">、</font></font><code>int</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">、</font></font><code>float</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">、</font></font><code>Layer</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">、</font></font><code>MaskLayer</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">或</font></font><code>ImageLayer</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font></font></li>
+<li><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">唯一有效的返回类型是对象</font></font><code>Layer</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">或对象列表</font></font><code>Layer</code><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">。</font></font></li>
+</ul>
+<div class="markdown-heading" dir="auto"><h2 tabindex="-1" class="heading-element" dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">贡献和许可</font></font></h2><a id="user-content-contributions-and-licensing" class="anchor" aria-label="永久链接：贡献和许可" href="#contributions-and-licensing"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg></a></div>
+<p dir="auto"><em><font style="vertical-align: inherit;"></font><a href="https://cs348k.stanford.edu/" rel="nofollow"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">Opendream 由 Varun Shenoy、Eric Lou、Shashank Rammoorthy 和 Rahul Shiv 构建，作为斯坦福大学CS 348K</font></font></a><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">的一部分</font><font style="vertical-align: inherit;">。</font></font></em></p>
+<p dir="auto"><font style="vertical-align: inherit;"><font style="vertical-align: inherit;">请随意提供您认为必要或有用的任何贡献。该项目已获得 MIT 许可证的许可。</font></font></p>
+</article></div>
